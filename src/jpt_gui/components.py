@@ -175,8 +175,8 @@ def create_range_slider(minimum: float, maximum: float, *args, **kwargs) -> \
         Generate a RangeSlider that resembles a continuous set.
     :param minimum: lowest number possible in the Range of the slider (left-Side)
     :param maximum: the Highest number possible in the Range of the slider (right-Side)
-    :param args: Further styling for plotly dash components
-    :param kwargs: Further styling for plotly dash components
+    :param args: Further styling for plotly dash mudolar_comps
+    :param kwargs: Further styling for plotly dash mudolar_comps
     :return: The slider as dcc component
     """
 

@@ -3,18 +3,11 @@ import os.path
 
 import jpt
 import jpt.distributions.univariate
-import igraph
-import numpy as np
-from igraph import Graph, EdgeSeq
-import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
-from jpt.base.utils import list2interval
 import dash
-from dash import dcc, html, Input, Output, State, ctx, MATCH, ALLSMALLER, ALL
-import math
+from dash import dcc, Input, Output
 import json
 import components as c
-from typing import List
 import sys, getopt
 
 '''
@@ -22,11 +15,13 @@ This is the main Programming where the Server will be started and the navigator 
 '''
 
 pre_tree = ""
-app_tags = dict(debug=True, dev_tools_hot_reload=False)
+temp_tree = False
+app_tags = dict(debug=True, dev_tools_hot_reload=False,)
 if len(sys.argv) > 1:
-    opts, args = getopt.getopt(sys.argv[1:], "t:h:p:", ["tree=","host=", "port=", "help"])
+    opts, args = getopt.getopt(sys.argv[1:], "f:h:p:j:t:", ["file=", "host=", "port=", "help", "jupyter=", "tree="])
     for opt, arg in opts:
-        if opt in ("-t", "--tree"):
+        if opt in ("-f", "--file"):
+            pre_tree = ""
             if not os.path.isfile(arg):
                 raise ValueError(f"file {arg} dose not exist.")
             pre_tree = arg
@@ -34,9 +29,16 @@ if len(sys.argv) > 1:
             app_tags.update({"host", str(arg)})
         elif opt in ("-p", "--port"):
             app_tags.update(dict(port=int(arg)))
+        elif opt in ("-j", "--jupyter"):
+            if str(arg) in ["external", "tab", "jupyterlab"]:
+                app_tags.update((dict(jupyter_mode=str(arg))))
         elif opt == "--help":
-            print("-t, --tree you can preload a tree with its path from the app.py directory \n -h, --host you can change the IP of the GUI \n -p --port you can change the port of the GUI \n Default Address is (http://127.0.0.1:8050/)")
+            print("-t, --tree you can preload a tree with its path from the app.py directory \n -h, --host you can change the IP of the GUI \n -p --port you can change the port of the GUI \n Default Address is (http://127.0.0.1:8050/) \n -j --jupyter to run the app as jupytermode external, tab or jupyterlab")
             exit(0)
+        elif opt in ("-t", "--tree"):
+            temp_tree = True
+            pre_tree = arg
+
 
 app = dash.Dash(__name__, use_pages=True, prevent_initial_callbacks=False, suppress_callback_exceptions=True,
                 meta_tags=[{'name': 'viewport',
@@ -101,20 +103,51 @@ def tree_update(upload):
     return False, "/"
 
 
-if __name__ == '__main__':
+class CustomDecoder(json.JSONDecoder):
+    def decode(self, s):
+        # Swap quotes for valid JSON snytax
+        s = s.replace("'", "\"")
+        # Replace "inf" with "null" in the JSON string before parsing
+        s = s.replace('None', 'null').replace('inf', '"inf"')
+        # Use the default JSON decoder to parse the modified string
+        parsed = super().decode(s)
+        # Replace any "null" values with positive infinity
+        return self.replace_inf(parsed)
+
+    def replace_inf(self, obj):
+        if isinstance(obj, dict):
+            return {key: self.replace_inf(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self.replace_inf(item) for item in obj]
+        elif obj == '"inf"':
+            return float('inf')
+        return obj
+
+def run():
     if pre_tree != "":
+        tree_data = pre_tree
         try:
             tree = open(pre_tree, "rb")
             tree_data = tree.read()
-            io_tree = jpt.JPT.from_json(json.loads(tree_data))
+            tree.close()
+
+            io_tree = jpt.JPT.from_json(json.loads(tree_data, cls=CustomDecoder))
             c.in_use_tree = io_tree
             c.priors = io_tree.priors
-            tree.close()
+            if temp_tree:
+                os.remove(pre_tree)
+
+
+        except json.decoder.JSONDecodeError as e:
+            print(f"JSONDecodeError: {e}")
+            print(f"Problematic JSON substring: {tree_data} ")# {tree_data[max(0, e.pos-10): e.pos + 10]}")
         except Exception:
             print("File could not be read")
             exit(1)
 
     app.run(**app_tags)
 
+if __name__ == '__main__':
+    run()
 
 
