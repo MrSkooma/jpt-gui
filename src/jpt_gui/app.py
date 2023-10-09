@@ -14,11 +14,17 @@ import sys, getopt
 This is the main Programming where the Server will be started and the navigator are constructed.
 '''
 
+import os
+jupyterhub_prefix = os.environ.get('JUPYTERHUB_SERVICE_PREFIX')
+dash_prefix = f"{jupyterhub_prefix}proxy/8050/" if jupyterhub_prefix else '/'
+
+
+
 pre_tree = ""
 temp_tree = False
 app_tags = dict(debug=True, dev_tools_hot_reload=False,)
 if len(sys.argv) > 1:
-    opts, args = getopt.getopt(sys.argv[1:], "f:h:p:j:t:", ["file=", "host=", "port=", "help", "jupyter=", "tree="])
+    opts, args = getopt.getopt(sys.argv[1:], "f:h:p:t:", ["file=", "host=", "port=", "help", "tree="])
     for opt, arg in opts:
         if opt in ("-f", "--file"):
             pre_tree = ""
@@ -29,11 +35,8 @@ if len(sys.argv) > 1:
             app_tags.update({"host", str(arg)})
         elif opt in ("-p", "--port"):
             app_tags.update(dict(port=int(arg)))
-        elif opt in ("-j", "--jupyter"):
-            if str(arg) in ["external", "tab", "jupyterlab"]:
-                app_tags.update((dict(jupyter_mode=str(arg))))
         elif opt == "--help":
-            print("-t, --tree you can preload a tree with its path from the app.py directory \n -h, --host you can change the IP of the GUI \n -p --port you can change the port of the GUI \n Default Address is (http://127.0.0.1:8050/) \n -j --jupyter to run the app as jupytermode external, tab or jupyterlab")
+            print("-t, --tree you can preload a tree with its path from the app.py directory \n -h, --host you can change the IP of the GUI \n -p --port you can change the port of the GUI \n Default Address is (http://127.0.0.1:8050/)")
             exit(0)
         elif opt in ("-t", "--tree"):
             temp_tree = True
@@ -96,11 +99,11 @@ def tree_update(upload):
             io_tree = jpt.JPT.from_json(json.loads(decoded))
         except Exception as e:
             print(e)
-            return False, "/"
+            return False,  f"{dash_prefix}"
         c.in_use_tree = io_tree
         c.priors = io_tree.priors
-        return True, "/empty"
-    return False, "/"
+        return True,  f"{dash_prefix}"
+    return False,  f"{dash_prefix}"
 
 
 class CustomDecoder(json.JSONDecoder):
@@ -140,13 +143,15 @@ def run():
 
         except json.decoder.JSONDecodeError as e:
             print(f"JSONDecodeError: {e}")
-            print(f"Problematic JSON substring: {tree_data} ")# {tree_data[max(0, e.pos-10): e.pos + 10]}")
+            print(f"Problematic JSON substring: {tree_data[max(0, e.pos-10): e.pos + 10]}")
         except Exception:
             print("File could not be read")
             exit(1)
 
     app.run(**app_tags)
 
+def jrun():
+    app.run()
 if __name__ == '__main__':
     run()
 
