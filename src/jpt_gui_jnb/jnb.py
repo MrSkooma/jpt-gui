@@ -112,7 +112,9 @@ def app_path(book_path_str: str, options: dict = {}):
         options_str += f" {k} {v}"
     return app_path_str + options_str
 
-
+def test():
+    from jpt_gui import app
+    app.run()
 
 # Define a custom JSON decoder
 
