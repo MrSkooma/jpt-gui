@@ -44,6 +44,7 @@ if len(sys.argv) > 1:
 
 
 app = dash.Dash(__name__, use_pages=True, prevent_initial_callbacks=False, suppress_callback_exceptions=True,
+                requests_pathname_prefix=dash_prefix,
                 meta_tags=[{'name': 'viewport',
                             'content': 'width=device-width, initial-scale=1.0'}],
                 )
